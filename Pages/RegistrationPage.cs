@@ -25,63 +25,93 @@ public class RegistrationPage(IWebDriver driver) : BasePage(driver)
     public void FillForm(UserData u)
     {
         AppLogger.Log.Information("Filling registration form for '{Login}'", u.LoginName);
-        Type(_firstNameInput, u.FirstName);
-        Type(_lastNameInput, u.LastName);
-        Type(_emailInput, u.Email);
-        Type(_phoneInput, u.Telephone);
-        Type(_addressInput, u.Address1);
-        Type(_cityInput, u.City);
-        Type(_zipInput, u.ZipCode);
-        SelectOption(_countrySelect, u.Country);
-        SelectOption(_regionSelect, u.Region);
-        Type(_loginInput, u.LoginName);
-        Type(_passwordInput, u.Password);
-        Type(_confirmInput, u.Password);
+
+        Type(_firstNameInput, u.FirstName, "First Name input");
+        Type(_lastNameInput, u.LastName, "Last Name input");
+        Type(_emailInput, u.Email, "Email input");
+        Type(_phoneInput, u.Telephone, "Telephone input");
+        Type(_addressInput, u.Address1, "Address input");
+        Type(_cityInput, u.City, "City input");
+        SelectOption(_countrySelect, u.Country, "Country Select Option");
+        SelectOption(_regionSelect, u.Region, "Region/State Select Option");
+        Type(_zipInput, u.ZipCode, "ZIP Code input");
+        Type(_loginInput, u.LoginName, "Login Name input");
+        Type(_passwordInput, u.Password, "Password input");
+        Type(_confirmInput, u.Password, "Password Confirm input");
 
         AppLogger.Log.Information("Checking Privacy Policy agreement");
-        WaitAndFindElement(_privacyCheckbox).Click();
+        GetVisibleElement(_privacyCheckbox, "Privacy Policy checkbox").Click();
     }
 
     public void SetLoginName(string value)
     {
         AppLogger.Log.Debug("Setting login name: '{Value}'", value);
-        Type(_loginInput, value);
+        Type(_loginInput, value, "Login Name input");
     }
 
-    public void Submit() => WaitAndFindElement(_continueBtn).Click();
+    public void Submit() => GetVisibleElement(_continueBtn, "Continue button").Click();
 
     public string GetLoginNameError()
     {
-        // no masking exceptions now (:
-        var el = Wait.Until(d =>
+        try
         {
-            var elements = d.FindElements(_helpBlockError);
-            return elements.FirstOrDefault(e => e.Displayed && e.Text.Contains("alphanumeric"));
-        });
+            var el = Wait.Until(d =>
+            {
+                try
+                {
+                    var elements = d.FindElements(_helpBlockError);
+                    return elements.FirstOrDefault(e => e.Displayed && e.Text.Contains("alphanumeric", StringComparison.OrdinalIgnoreCase));
+                }
+                catch (StaleElementReferenceException)
+                {
+                    return null;
+                }
+            });
 
-        return el?.Text.Trim() ?? string.Empty;
+            return el.Text.Trim();
+        }
+        catch (WebDriverTimeoutException)
+        {
+            throw new NotFoundException("Validation error message(alphanumeric) is not found.");
+        }
     }
 
-    private void Type(By locator, string text)
+    private void Type(By locator, string text, string elementName)
     {
-        var el = WaitAndFindElement(locator);
+        var el = GetVisibleElement(locator, elementName);
         el.Clear();
         el.SendKeys(text);
     }
 
-    private void SelectOption(By locator, string text)
+    private void SelectOption(By locator, string text, string elementName)
     {
-        Wait.Until(d =>
+        try
         {
-            var el = d.FindElement(locator);
-            var selectElement = new SelectElement(el);
-
-            if (selectElement.Options.Any(o => o.Text == text))
+            Wait.Until(d =>
             {
-                selectElement.SelectByText(text);
-                return true;
-            }
-            return false;
-        });
+                try
+                {
+                    var elements = d.FindElements(locator);
+                    if (elements.Count == 0 || !elements[0].Displayed) return false;
+
+                    var selectElement = new SelectElement(elements[0]);
+
+                    if (selectElement.Options.Any(o => o.Text == text))
+                    {
+                        selectElement.SelectByText(text);
+                        return true;
+                    }
+                    return false;
+                }
+                catch (StaleElementReferenceException)
+                {
+                    return false;
+                }
+            });
+        }
+        catch (WebDriverTimeoutException)
+        {
+            throw new NotFoundException($"Cannot select '{text}' option in element '{elementName}'.");
+        }
     }
 }

@@ -5,7 +5,7 @@ namespace AutomationTestStore.Pages;
 
 public class LoginPage(IWebDriver driver) : BasePage(driver)
 {
-    private const string Url = "https://automationteststore.com/index.php?rt=account/login";
+    private readonly string Url = $"{ConfigHelper.BaseUrl}/index.php?rt=account/login";
 
     private readonly By _continueBtn = By.CssSelector("#accountFrm button[title='Continue']");
 
@@ -18,6 +18,7 @@ public class LoginPage(IWebDriver driver) : BasePage(driver)
     public void ClickContinueNewCustomer()
     {
         AppLogger.Log.Information("Clicking Continue (new customer)");
-        WaitAndFindElement(_continueBtn).Click();
+        var btn = GetVisibleElement(_continueBtn, "Continue button (new customer)");
+        btn.Click();
     }
 }

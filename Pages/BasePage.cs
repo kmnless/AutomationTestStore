@@ -15,13 +15,25 @@ public abstract class BasePage
         {
             PollingInterval = TimeSpan.FromMilliseconds(500)
         };
-
-        // so isnt needed to catch these exceptions everywhere
-        Wait.IgnoreExceptionTypes(typeof(StaleElementReferenceException), typeof(NoSuchElementException));
     }
 
-    protected IWebElement WaitAndFindElement(By locator)
+    protected IWebElement GetVisibleElement(By locator, string elementName)
     {
-        return Wait.Until(d => d.FindElement(locator));
+        try
+        {
+            return Wait.Until(driver =>
+            {
+                var elements = driver.FindElements(locator);
+
+                if (elements.Count == 0) return null;
+
+                var element = elements[0];
+                return element.Displayed ? element : null;
+            });
+        }
+        catch (WebDriverTimeoutException)
+        {
+            throw new NotFoundException($"Element '{elementName}' ({locator}) is not found.");
+        }
     }
 }

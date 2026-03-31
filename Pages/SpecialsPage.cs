@@ -14,15 +14,32 @@ public class SpecialsPage(IWebDriver driver) : BasePage(driver)
     public void Open()
     {
         AppLogger.Log.Information("Opening Specials page");
-        WaitAndFindElement(_specialsMenuLink).Click();
-        Wait.Until(d => d.Url.Contains("special"));
+
+        GetVisibleElement(_specialsMenuLink, "Specials Menu Link").Click();
+
+        try
+        {
+            Wait.Until(d => d.Url.Contains("special", StringComparison.OrdinalIgnoreCase));
+        }
+        catch (WebDriverTimeoutException)
+        {
+            throw new NotFoundException("Cannot open Specials page.");
+        }
     }
 
     public List<string> GetProductsWithoutDiscount()
     {
         var bad = new List<string>();
 
-        // FindElements isnt throwing exception if nothing found
+        try
+        {
+            Wait.Until(d => d.FindElements(_productBlock).Count > 0);
+        }
+        catch (WebDriverTimeoutException)
+        {
+            throw new NotFoundException("Product Block not found on Specials page.");
+        }
+
         foreach (var product in Driver.FindElements(_productBlock))
         {
             bool hasOld = product.FindElements(_priceOld).Any(e => e.Displayed);
@@ -30,17 +47,23 @@ public class SpecialsPage(IWebDriver driver) : BasePage(driver)
 
             if (!hasOld || !hasNew)
             {
-                var name = TryGetName(product);
-                AppLogger.Log.Warning("No discount on: '{Name}'", name);
+                var name = GetProductName(product);
+                // AppLogger.Log.Warning("No discount on: '{Name}'", name);
                 bad.Add(name);
             }
         }
         return bad;
     }
 
-    private string TryGetName(IWebElement p)
+    private string GetProductName(IWebElement product)
     {
-        try { return p.FindElement(_productName).Text.Trim(); }
-        catch { return "Unknown"; }
+        var nameElements = product.FindElements(_productName);
+
+        if (nameElements.Count == 0 || !nameElements[0].Displayed)
+        {
+            throw new NotFoundException("Cannot find product name.");
+        }
+
+        return nameElements[0].Text.Trim();
     }
 }

@@ -10,20 +10,18 @@ public class AccountPage(IWebDriver driver) : BasePage(driver)
 
     public bool IsDisplayed()
     {
-        Wait.Until(d => d.Url.Contains("account"));
-        var heading = WaitAndFindElement(_heading).Text;
-        AppLogger.Log.Information("Account page heading: '{H}'", heading);
-        return heading.Contains("Account", StringComparison.OrdinalIgnoreCase);
+        Wait.Until(d => d.Url.Contains("account", StringComparison.OrdinalIgnoreCase));
+
+        var headingElement = GetVisibleElement(_heading, "Account page heading");
+
+        AppLogger.Log.Information("Account page heading: '{H}'", headingElement.Text);
+        return headingElement.Text.Contains("Account", StringComparison.OrdinalIgnoreCase);
     }
 
     public string GetWelcomeText()
     {
-        var el = Wait.Until(d =>
-        {
-            var elements = d.FindElements(_welcomeText);
-            return elements.FirstOrDefault(e => e.Displayed && e.Text.Contains("Welcome", StringComparison.OrdinalIgnoreCase));
-        });
+        var welcomeElement = GetVisibleElement(_welcomeText, "Welcome text element");
 
-        return el?.Text.Trim() ?? string.Empty;
+        return welcomeElement.Text.Trim();
     }
 }
