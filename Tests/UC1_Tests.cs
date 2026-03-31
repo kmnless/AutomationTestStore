@@ -1,3 +1,4 @@
+using System;
 using AutomationTestStore.Core;
 using AutomationTestStore.Pages;
 using FluentAssertions;
@@ -5,13 +6,18 @@ using Xunit;
 
 namespace AutomationTestStore.Tests;
 
-[Collection("Chrome")]
-public class UC1_Chrome() : BaseTest(BrowserType.Chrome)
+public abstract class UC1_Tests : BaseTest
 {
+    protected readonly BrowserType browser;
+
+    protected UC1_Tests(BrowserType browser) : base(browser)
+    {
+        this.browser = browser;
+    }
+
     [Theory, MemberData(nameof(TestData.ValidUsers), MemberType = typeof(TestData))]
     public void CreateAccount_ShouldLoginSuccessfully(UserData baseUser)
     {
-        // generate unique login and email to avoid conflicts with existing accounts since the site doesnt allow duplicates
         var uniqueSuffix = DateTime.Now.Ticks.ToString()[^6..];
         var user = baseUser with
         {
@@ -19,7 +25,7 @@ public class UC1_Chrome() : BaseTest(BrowserType.Chrome)
             Email = uniqueSuffix + baseUser.Email
         };
 
-        AppLogger.Log.Information("[UC-1] Login: '{L}'", user.LoginName);
+        AppLogger.Log.Information("[UC-1][{Browser}] Login: '{L}'", browser, user.LoginName);
 
         var login = new LoginPage(Driver);
         login.Open();
@@ -31,30 +37,18 @@ public class UC1_Chrome() : BaseTest(BrowserType.Chrome)
 
         var account = new AccountPage(Driver);
         account.IsDisplayed().Should().BeTrue("My Account page must open");
-        account.GetWelcomeText().Should().Contain(user.FirstName,
-            "header must contain the username (first name)");
+        account.GetWelcomeText().Should().Contain(user.FirstName, "header must contain the username (first name)");
     }
+}
 
-    [Collection("Firefox")]
-    public class UC1_Firefox() : BaseTest(BrowserType.Firefox)
-    {
-        [Theory, MemberData(nameof(TestData.ValidUsers), MemberType = typeof(TestData))]
-        public void CreateAccount_ShouldLoginSuccessfully(UserData user)
-        {
-            AppLogger.Log.Information("[UC-1][Firefox] Login: '{L}'", user.LoginName);
+[Collection("Chrome")]
+public class UC1_Chrome : UC1_Tests
+{
+    public UC1_Chrome() : base(BrowserType.Chrome) { }
+}
 
-            var login = new LoginPage(Driver);
-            login.Open();
-            login.ClickContinueNewCustomer();
-
-            var reg = new RegistrationPage(Driver);
-            reg.FillForm(user);
-            reg.Submit();
-
-            var account = new AccountPage(Driver);
-            account.IsDisplayed().Should().BeTrue("My Account page must open");
-            account.GetWelcomeText().Should().Contain(user.FirstName,
-                "header must contain the username (first name)");
-        }
-    }
+[Collection("Firefox")]
+public class UC1_Firefox : UC1_Tests
+{
+    public UC1_Firefox() : base(BrowserType.Firefox) { }
 }
