@@ -4,98 +4,84 @@ using AutomationTestStore.Core;
 
 namespace AutomationTestStore.Pages;
 
-public class RegistrationPage(IWebDriver driver)
+public class RegistrationPage(IWebDriver driver) : BasePage(driver)
 {
-    private readonly WebDriverWait _wait = new(driver, TimeSpan.FromSeconds(10));
+    private readonly By _firstNameInput = By.CssSelector("#AccountFrm_firstname");
+    private readonly By _lastNameInput = By.CssSelector("#AccountFrm_lastname");
+    private readonly By _emailInput = By.CssSelector("#AccountFrm_email");
+    private readonly By _phoneInput = By.CssSelector("#AccountFrm_telephone");
+    private readonly By _addressInput = By.CssSelector("#AccountFrm_address_1");
+    private readonly By _cityInput = By.CssSelector("#AccountFrm_city");
+    private readonly By _zipInput = By.CssSelector("#AccountFrm_postcode");
+    private readonly By _countrySelect = By.CssSelector("#AccountFrm_country_id");
+    private readonly By _regionSelect = By.CssSelector("#AccountFrm_zone_id");
+    private readonly By _loginInput = By.CssSelector("#AccountFrm_loginname");
+    private readonly By _passwordInput = By.CssSelector("#AccountFrm_password");
+    private readonly By _confirmInput = By.CssSelector("#AccountFrm_confirm");
+    private readonly By _privacyCheckbox = By.CssSelector("#AccountFrm_agree");
+    private readonly By _continueBtn = By.CssSelector("button[title='Continue']");
+    private readonly By _helpBlockError = By.CssSelector(".help-block");
 
     public void FillForm(UserData u)
     {
         AppLogger.Log.Information("Filling registration form for '{Login}'", u.LoginName);
-        Type("#AccountFrm_firstname",  u.FirstName);
-        Type("#AccountFrm_lastname",   u.LastName);
-        Type("#AccountFrm_email",      u.Email);
-        Type("#AccountFrm_telephone",  u.Telephone);
-        Type("#AccountFrm_address_1",  u.Address1);
-        Type("#AccountFrm_city",       u.City);
-        Type("#AccountFrm_postcode",   u.ZipCode);
-        Select("#AccountFrm_country_id", u.Country);
-        Select("#AccountFrm_zone_id",    u.Region);
-        Type("#AccountFrm_loginname",  u.LoginName);
-        Type("#AccountFrm_password",   u.Password);
-        Type("#AccountFrm_confirm",    u.Password);
+        Type(_firstNameInput, u.FirstName);
+        Type(_lastNameInput, u.LastName);
+        Type(_emailInput, u.Email);
+        Type(_phoneInput, u.Telephone);
+        Type(_addressInput, u.Address1);
+        Type(_cityInput, u.City);
+        Type(_zipInput, u.ZipCode);
+        SelectOption(_countrySelect, u.Country);
+        SelectOption(_regionSelect, u.Region);
+        Type(_loginInput, u.LoginName);
+        Type(_passwordInput, u.Password);
+        Type(_confirmInput, u.Password);
+
         AppLogger.Log.Information("Checking Privacy Policy agreement");
-        driver.FindElement(By.CssSelector("#AccountFrm_agree")).Click();
+        WaitAndFindElement(_privacyCheckbox).Click();
     }
 
     public void SetLoginName(string value)
     {
         AppLogger.Log.Debug("Setting login name: '{Value}'", value);
-        Type("#AccountFrm_loginname", value);
+        Type(_loginInput, value);
     }
 
-    public void Submit() =>
-        driver.FindElement(By.CssSelector("button[title='Continue']")).Click();
+    public void Submit() => WaitAndFindElement(_continueBtn).Click();
 
     public string GetLoginNameError()
     {
-        try
+        // no masking exceptions now (:
+        var el = Wait.Until(d =>
         {
-            // race condition: need to wait
-            return _wait.Until(d =>
-            {
-                try
-                {
-                    var elements = d.FindElements(By.CssSelector(".help-block"));
-                    var el = elements.FirstOrDefault(e => e.Displayed && e.Text.Contains("alphanumeric"));
+            var elements = d.FindElements(_helpBlockError);
+            return elements.FirstOrDefault(e => e.Displayed && e.Text.Contains("alphanumeric"));
+        });
 
-                    // null for coninue the loop
-                    return el != null ? el.Text.Trim() : null;
-                }
-                catch (StaleElementReferenceException)
-                {
-                    return null;
-                }
-            }) ?? string.Empty;
-        }
-        catch (WebDriverTimeoutException)
-        {
-            return string.Empty;
-        }
+        return el?.Text.Trim() ?? string.Empty;
     }
 
-    private void Type(string css, string text)
+    private void Type(By locator, string text)
     {
-        var el = _wait.Until(d => d.FindElement(By.CssSelector(css)));
+        var el = WaitAndFindElement(locator);
         el.Clear();
         el.SendKeys(text);
     }
 
-    private void Select(string css, string text)
+    private void SelectOption(By locator, string text)
     {
-        _wait.Until(d =>
+        Wait.Until(d =>
         {
-            try
-            {
-                var el = d.FindElement(By.CssSelector(css));
-                var selectElement = new SelectElement(el);
+            var el = d.FindElement(locator);
+            var selectElement = new SelectElement(el);
 
-                if (selectElement.Options.Any(o => o.Text == text))
-                {
-                    selectElement.SelectByText(text);
-                    return true;
-                }
-                // wait for options to load
-                return false;
-            }
-            catch (StaleElementReferenceException)
+            if (selectElement.Options.Any(o => o.Text == text))
             {
-                // ajax reloaded select element, ignore and go next iteration
-                return false;
+                selectElement.SelectByText(text);
+                return true;
             }
-            catch (NoSuchElementException)
-            {
-                return false;
-            }
+            return false;
         });
     }
 }

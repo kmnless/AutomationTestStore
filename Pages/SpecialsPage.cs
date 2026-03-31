@@ -1,27 +1,32 @@
 using OpenQA.Selenium;
-using OpenQA.Selenium.Support.UI;
 using AutomationTestStore.Core;
 
 namespace AutomationTestStore.Pages;
 
-public class SpecialsPage(IWebDriver driver)
+public class SpecialsPage(IWebDriver driver) : BasePage(driver)
 {
-    private readonly WebDriverWait _wait = new(driver, TimeSpan.FromSeconds(10));
+    private readonly By _specialsMenuLink = By.CssSelector("a[href*='special']");
+    private readonly By _productBlock = By.CssSelector(".col-md-3.col-sm-6.col-xs-12");
+    private readonly By _priceOld = By.CssSelector(".priceold");
+    private readonly By _priceNew = By.CssSelector(".pricenew");
+    private readonly By _productName = By.CssSelector("a.prdocutname");
 
     public void Open()
     {
         AppLogger.Log.Information("Opening Specials page");
-        driver.FindElement(By.CssSelector("a[href*='special']")).Click();
-        _wait.Until(d => d.Url.Contains("special"));
+        WaitAndFindElement(_specialsMenuLink).Click();
+        Wait.Until(d => d.Url.Contains("special"));
     }
 
     public List<string> GetProductsWithoutDiscount()
     {
         var bad = new List<string>();
-        foreach (var product in driver.FindElements(By.CssSelector(".col-md-3.col-sm-6.col-xs-12")))
+
+        // FindElements isnt throwing exception if nothing found
+        foreach (var product in Driver.FindElements(_productBlock))
         {
-            bool hasOld = product.FindElements(By.CssSelector(".priceold")).Any(e => e.Displayed);
-            bool hasNew = product.FindElements(By.CssSelector(".pricenew")).Any(e => e.Displayed);
+            bool hasOld = product.FindElements(_priceOld).Any(e => e.Displayed);
+            bool hasNew = product.FindElements(_priceNew).Any(e => e.Displayed);
 
             if (!hasOld || !hasNew)
             {
@@ -33,13 +38,9 @@ public class SpecialsPage(IWebDriver driver)
         return bad;
     }
 
-    private static string TryGetName(IWebElement p)
+    private string TryGetName(IWebElement p)
     {
-        try
-        {
-            // i guess typo from devs
-            return p.FindElement(By.CssSelector("a.prdocutname")).Text.Trim();
-        }
+        try { return p.FindElement(_productName).Text.Trim(); }
         catch { return "Unknown"; }
     }
 }

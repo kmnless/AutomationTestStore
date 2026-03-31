@@ -3,19 +3,21 @@ using AutomationTestStore.Core;
 
 namespace AutomationTestStore.Pages;
 
-public class LoginPage(IWebDriver driver)
+public class LoginPage(IWebDriver driver) : BasePage(driver)
 {
-    const string Url = "https://automationteststore.com/index.php?rt=account/login";
+    private const string Url = "https://automationteststore.com/index.php?rt=account/login";
+
+    private readonly By _continueBtn = By.CssSelector("#accountFrm button[title='Continue']");
 
     public void Open()
     {
         AppLogger.Log.Information("Opening Login/Register page");
-        driver.Navigate().GoToUrl(Url);
+        Driver.Navigate().GoToUrl(Url);
     }
 
     public void ClickContinueNewCustomer()
     {
         AppLogger.Log.Information("Clicking Continue (new customer)");
-        driver.FindElement(By.CssSelector("#accountFrm button[title='Continue']")).Click();
+        WaitAndFindElement(_continueBtn).Click();
     }
 }
